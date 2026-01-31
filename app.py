@@ -1,45 +1,46 @@
 import logging
+import google.generativeai as genai
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters, CommandHandler
-from openai import OpenAI
 
-# আপনার দেওয়া টোকেন এবং কী
-XAI_API_KEY = "Xai-RgXFFAXO3mGmxsSSOc4GXZ31C9AEADiaCW70YGUnX3Dtv2qPeqGSiI8PGv9HIJLDFa9doqCWMp287J1z"
+# আপনার এপিআই কী এবং টোকেন
+GEMINI_API_KEY = "AIzaSyDInMEDhlsfBhTnpE3VW7TdC9Y7mzLDnpY"
 TELEGRAM_BOT_TOKEN = "8516062464:AAHBjjOfArYXf6-xsfjuCXGN9kUAA5Wi3gQ"
 
-# Grok (xAI) ক্লায়েন্ট সেটআপ
-client = OpenAI(
-    api_key=XAI_API_KEY,
-    base_url="https://api.x.ai/v1",
-)
+# Gemini AI কনফিগারেশন
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-3-flash')
 
 # লগিং সেটআপ
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# /start কমান্ড
+# আপনার দেওয়া পরিচয়সহ /start কমান্ডের উত্তর
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("আসসালামু আলাইকুম! আমি আপনার Grok AI বট। আমাকে যা খুশি জিজ্ঞাসা করুন।")
+    welcome_msg = (
+        "আসসালামু আলাইকুম! আমি Study Help AI।\n"
+        "আমাকে তৈরি করেছেন Abdur Rahman।\n"
+        "আমি আপনাকে কীভাবে সাহায্য করতে পারি?"
+    )
+    await update.message.reply_text(welcome_msg)
 
-# মেসেজ হ্যান্ডলার
+# এআই চ্যাট হ্যান্ডলার (ব্যবহারকারীর প্রশ্নের উত্তর দিবে)
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     try:
-        # Grok মডেল থেকে উত্তর আনা
-        response = client.chat.completions.create(
-            model="grok-beta", # অথবা "grok-2"
-            messages=[{"role": "user", "content": user_text}]
-        )
-        answer = response.choices[0].message.content
-        await update.message.reply_text(answer)
+        # Gemini 3 Flash মডেল থেকে রেসপন্স নেওয়া
+        response = model.generate_content(user_text)
+        await update.message.reply_text(response.text)
     except Exception as e:
-        await update.message.reply_text(f"দুঃখিত, বর্তমানে একটি সমস্যা হচ্ছে। হয়তো API ক্রেডিটে সমস্যা।")
+        await update.message.reply_text("দুঃখিত, এআই সার্ভারে সংযোগ করতে সমস্যা হচ্ছে। অনুগ্রহ করে কিছুক্ষণ পর চেষ্টা করুন।")
 
 if __name__ == '__main__':
+    # টেলিগ্রাম বট অ্যাপ্লিকেশন তৈরি
     application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     
+    # কমান্ড এবং মেসেজ হ্যান্ডলার যুক্ত করা
     application.add_handler(CommandHandler('start', start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     
-    print("বট চালু হচ্ছে...")
+    print("Study Help AI বটটি চালু হয়েছে...")
     application.run_polling()
-  
+    
